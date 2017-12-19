@@ -25,7 +25,7 @@
     }
  
     body#background {
-      background: url('/images/garage.jpg') no-repeat 50% 50% fixed; 
+      background: url('/images/garage.png') no-repeat 50% 50% fixed; 
       background-size: cover;
       -moz-background-size: cover;
       -o-background-size: cover;
@@ -57,7 +57,7 @@
   var socket = io();
   socket.on('snapshot', function(status){
     var t = new Date().getTime();
-    var url = "url(/images/garage.jpg?t=" + t + ") no-repeat 50% 50% fixed";
+    var url = "url(/images/garage.png?t=" + t + ") no-repeat 50% 50% fixed";
     console.log('load new snapshot: ' + url);
     $("#background").css("background", url);
     $("#background").css("background-size", "cover");
