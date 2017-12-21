@@ -1,4 +1,8 @@
-var trusona = require('./trusona.js');
+require('dotenv').load();
+var trusona = require('ffi').Library('libtrusona', {
+    'trusonafy': [ 'int', [ 'string','string' ]]
+});
+
 var path = require('path');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
