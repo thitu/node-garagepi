@@ -1,3 +1,4 @@
+var trusona = require('./trusona.js');
 var path = require('path');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
@@ -7,7 +8,6 @@ var app = express();
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
 var startTakingSnaps = false;
-var trusona = require('trusona');
 
 require('console-stamp')(console, '[HH:MM:ss]');
 
