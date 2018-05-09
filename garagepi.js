@@ -1,12 +1,10 @@
 require('dotenv').load();
-var trusona = require('ffi').Library('libtrusona', {
-    'trusonafy': [ 'int', [ 'string','string' ]]
-});
 
+var auth = require('basic-auth');
 var path = require('path');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
-var GPIO = require("onoff").Gpio;
+var GPIO = require('onoff').Gpio;
 var express = require('express');
 var app = express();
 var server = require('http').Server(app);
@@ -25,34 +23,66 @@ app.use(bodyParser.urlencoded({extended: false}));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', function (req, res) {
+  var credentials = auth(req);
+
+  if (!credentials || !checkCredentials(credentials.name, credentials.pass)) {
+    res.statusCode = 401;
+    res.setHeader('WWW-Authenticate', 'Basic realm="5751ecd2e734"');
+    res.end('Access denied');
+    return;
+  }
+  else {
     res.render('index.html');
+  }
 });
 
 var state = 'closed';
 app.get('/api/clickbutton', function (req, res) {
-    state = state === 'closed' ? 'open' : 'closed';
+  state = state === 'closed' ? 'open' : 'closed';
 
-    // hardcode to closed for now until reed switch
-    state = 'closed';
-    res.setHeader('Content-Type', 'application/json');
-    res.end(state);
-    outputSequence(7, '10', 1000);
+  const { spawn } = require('child_process');
+  const trusonafy = spawn(process.env.trusona, [ process.env.trusona_user ]);
+
+  trusonafy.stdout.on('data', (data) => {
+    console.log(`stdout: ${data}`);
+  });
+
+  trusonafy.stderr.on('data', (data) => {
+    console.log(`stderr: ${data}`);
+  });
+
+  trusonafy.on('close', (code) => {
+    if(code === 0) {
+      // hardcode to closed for now until reed switch
+      state = 'closed';
+      res.setHeader('Content-Type', 'application/json');
+      res.end(state);
+      outputSequence(7, '10', 1500);
+    }
+  });
 });
 
 app.get('/api/status', function (req, res) {
-    var code = trusona.trusonafy(process.env.trusona_settings, process.env.trusona_user_identifier);
+  var credentials = auth(req);
 
-    if(code === 0) {
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({state: state}));
-        console.log('returning state: ' + state);
-    }
-    else {
-        var err = new Error('Not Authorized');
-        err.status = 403;
-        next(err);
-    }
+  if (!credentials || !checkCredentials(credentials.name, credentials.pass)) {
+    res.statusCode = 401;
+    res.setHeader('WWW-Authenticate', 'Basic realm="5751ecd2e734"');
+    res.end('Access denied');
+    return;
+  }
+  else {
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({state: state}));
+    console.log('returning state: ' + state);
+  }
 });
+
+function checkCredentials(username, password) {
+  return username && password
+    && username === process.env.garage_username
+    && password === process.env.garage_password;
+}
 
 function outputSequence(pin, seq, timeout) {
     var gpio = new GPIO(4, 'out');
