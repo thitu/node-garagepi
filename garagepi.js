@@ -1,15 +1,23 @@
 require('dotenv').load();
 
-var auth = require('basic-auth');
+var startTakingSnaps = false;
+
 var path = require('path');
+var os = require('os');
+var csurf = require('csurf');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
+var cookieParser = require('cookie-parser');
 var GPIO = require('onoff').Gpio;
 var express = require('express');
 var app = express();
+var rateLimit = require('express-rate-limit');
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
-var startTakingSnaps = false;
+
+var csrfProtection = csurf({ cookie: true });
+var parseForm = bodyParser.urlencoded({ extended: false });
+
 
 require('console-stamp')(console, '[HH:MM:ss]');
 
@@ -17,23 +25,17 @@ require('console-stamp')(console, '[HH:MM:ss]');
 app.set('views', path.join(__dirname, 'views'));
 app.engine('html', require('ejs').renderFile);
 
+app.use(cookieParser());
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', function (req, res) {
-  var credentials = auth(req);
+app.get('/', csrfProtection, function(req, res) {
+  res.setHeader('X-Frame-Options', 'ALLOW-FROM ' + process.env.framing_domain);
+  res.setHeader('Content-Security-Policy', "frame-ancestors http://" + process.env.framing_domain);
 
-  if (!credentials || !checkCredentials(credentials.name, credentials.pass)) {
-    res.statusCode = 401;
-    res.setHeader('WWW-Authenticate', 'Basic realm="5751ecd2e734"');
-    res.end('Access denied');
-    return;
-  }
-  else {
-    res.render('index.html');
-  }
+  res.render('index.html', { csrfToken: req.csrfToken() });
 });
 
 var state = 'closed';
@@ -55,6 +57,9 @@ app.get('/api/clickbutton', function (req, res) {
     if(code === 0) {
       // hardcode to closed for now until reed switch
       state = 'closed';
+
+      res.setHeader('X-Frame-Options', 'ALLOW-FROM ' + process.env.framing_domain);
+      res.setHeader('Content-Security-Policy', "frame-ancestors http://" + process.env.framing_domain);
       res.setHeader('Content-Type', 'application/json');
       res.end(state);
       outputSequence(7, '10', 1500);
@@ -63,26 +68,13 @@ app.get('/api/clickbutton', function (req, res) {
 });
 
 app.get('/api/status', function (req, res) {
-  var credentials = auth(req);
+  res.setHeader('X-Frame-Options', 'ALLOW-FROM ' + process.env.framing_domain);
+  res.setHeader('Content-Security-Policy', "frame-ancestors http://" + process.env.framing_domain);
+  res.setHeader('Content-Type', 'application/json');
 
-  if (!credentials || !checkCredentials(credentials.name, credentials.pass)) {
-    res.statusCode = 401;
-    res.setHeader('WWW-Authenticate', 'Basic realm="5751ecd2e734"');
-    res.end('Access denied');
-    return;
-  }
-  else {
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({state: state}));
-    console.log('returning state: ' + state);
-  }
+  res.end(JSON.stringify({state: state}));
+  console.log('returning state: ' + state);
 });
-
-function checkCredentials(username, password) {
-  return username && password
-    && username === process.env.garage_username
-    && password === process.env.garage_password;
-}
 
 function outputSequence(pin, seq, timeout) {
     var gpio = new GPIO(4, 'out');
