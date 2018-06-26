@@ -20,16 +20,14 @@ var parseForm = bodyParser.urlencoded({ extended: false });
 
 // https://www.npmjs.com/package/express-rate-limit
 // notes: allowing only 1 request to the trusonafying API
-// every minute. 2nd request will be delayed 15 seconds.
-//
-// Why? It's the internet- there are idiots out there!
+// every minute. Why? It's the internet- there are idiots out there!
 //
 var apiLimiter = new rateLimit({
   windowMs: 1*60*1000,
-  delayMs: 15*1000,
+  delayMs: 30*1000,
   delayAfter: 1,
   headers: true,
-  max: 2
+  max: 1
 });
 
 require('console-stamp')(console, '[HH:MM:ss]');
