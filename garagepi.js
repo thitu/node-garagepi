@@ -18,6 +18,19 @@ var io = require('socket.io')(server);
 var csrfProtection = csurf({ cookie: true });
 var parseForm = bodyParser.urlencoded({ extended: false });
 
+// https://www.npmjs.com/package/express-rate-limit
+// notes: allowing only 1 request to the trusonafying API
+// every minute. 2nd request will be delayed 15 seconds.
+//
+// Why? It's the internet- there are idiots out there!
+//
+var apiLimiter = new rateLimit({
+  windowMs: 1*60*1000,
+  delayMs: 15*1000,
+  delayAfter: 1,
+  headers: true,
+  max: 2
+});
 
 require('console-stamp')(console, '[HH:MM:ss]');
 
@@ -39,7 +52,7 @@ app.get('/', csrfProtection, function(req, res) {
 });
 
 var state = 'closed';
-app.get('/api/clickbutton', function (req, res) {
+app.get('/api/clickbutton', apiLimiter, function (req, res) {
   state = state === 'closed' ? 'open' : 'closed';
 
   const { spawn } = require('child_process');
@@ -67,7 +80,7 @@ app.get('/api/clickbutton', function (req, res) {
   });
 });
 
-app.get('/api/status', function (req, res) {
+app.get('/api/status', apiLimiter, function (req, res) {
   res.setHeader('X-Frame-Options', 'ALLOW-FROM ' + process.env.framing_domain);
   res.setHeader('Content-Security-Policy', "frame-ancestors http://" + process.env.framing_domain);
   res.setHeader('Content-Type', 'application/json');
