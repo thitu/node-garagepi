@@ -43,8 +43,8 @@ app.use(bodyParser.urlencoded({extended: false}));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', csrfProtection, function(req, res) {
-  res.setHeader('X-Frame-Options', 'ALLOW-FROM ' + process.env.framing_domain);
-  res.setHeader('Content-Security-Policy', "frame-ancestors http://" + process.env.framing_domain);
+  res.setHeader('X-Frame-Options', 'ALLOW-FROM https://' + process.env.framing_domain);
+  res.setHeader('Content-Security-Policy', "frame-ancestors https://" + process.env.framing_domain);
 
   res.render('index.html', { csrfToken: req.csrfToken() });
 });
@@ -69,8 +69,8 @@ app.get('/api/clickbutton', apiLimiter, function (req, res) {
       // hardcode to closed for now until reed switch
       state = 'closed';
 
-      res.setHeader('X-Frame-Options', 'ALLOW-FROM ' + process.env.framing_domain);
-      res.setHeader('Content-Security-Policy', "frame-ancestors http://" + process.env.framing_domain);
+      res.setHeader('X-Frame-Options', 'ALLOW-FROM https://' + process.env.framing_domain);
+      res.setHeader('Content-Security-Policy', "frame-ancestors https://" + process.env.framing_domain);
       res.setHeader('Content-Type', 'application/json');
       res.end(state);
       outputSequence(7, '10', 1500);
@@ -79,8 +79,8 @@ app.get('/api/clickbutton', apiLimiter, function (req, res) {
 });
 
 app.get('/api/status', apiLimiter, function (req, res) {
-  res.setHeader('X-Frame-Options', 'ALLOW-FROM ' + process.env.framing_domain);
-  res.setHeader('Content-Security-Policy', "frame-ancestors http://" + process.env.framing_domain);
+  res.setHeader('X-Frame-Options', 'ALLOW-FROM https://' + process.env.framing_domain);
+  res.setHeader('Content-Security-Policy', "frame-ancestors https://" + process.env.framing_domain);
   res.setHeader('Content-Type', 'application/json');
 
   res.end(JSON.stringify({state: state}));
