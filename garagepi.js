@@ -106,9 +106,10 @@ app.use(function (req, res, next) {
 
 function takeSnaps() {
     return setTimeout(function () {
-        var imgPath = path.join(__dirname, 'public/images');
-        var cmd = 'raspistill -vf -hf -w 640 -h 480 -ex auto -q 100 -e png -sh 100 -o ' + imgPath + '/garage.png';
+        var imgPath = path.join(__dirname, 'public/images/') + 'garage.png';
+        var cmd = 'raspistill -vf -hf -w 640 -h 480 -ex auto -q 100 -e png -sh 100 -o ' + imgPath;
         var exec = require('child_process').exec;
+
         exec(cmd, function (error, stdout, stderr) {
             if (error !== null) {
                 console.log('exec error: ' + error);
