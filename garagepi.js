@@ -2,7 +2,9 @@ require('dotenv').load();
 
 var startTakingSnaps = false;
 
+var fs = require('fs');
 var path = require('path');
+var https = require('https');
 var os = require('os');
 var csurf = require('csurf');
 var logger = require('morgan');
@@ -12,7 +14,13 @@ var GPIO = require('onoff').Gpio;
 var express = require('express');
 var app = express();
 var rateLimit = require('express-rate-limit');
-var server = require('http').Server(app);
+
+var httpsOptions = {
+  key: fs.readFileSync(process.env.ssl_key),
+  cert: fs.readFileSync(process.env.ssl_cert)
+};
+
+var server = require('https').createServer(httpsOptions, app);
 var io = require('socket.io')(server);
 
 var csrfProtection = csurf({ cookie: true });
@@ -146,7 +154,6 @@ io.on('connection', function (socket) {
     });
 });
 
-var port = process.env.PORT || 8000;
-server.listen(port, function () {
-    console.log('GaragePi listening on port:', port);
+server.listen(8443, function () {
+    console.log('GaragePi listening on port: 8443');
 });

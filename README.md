@@ -8,10 +8,6 @@ The pi is setup in a shoebox. For the live feed view, head on to [garage.nmcode.
 
 ![raspeberry pi in a shoebox](public/images/shoebox-pi.png)
 
-#### Todo:
-
-Setup up and configure [Let's Encrypt](https://letsencrypt.org).
-
 ------
 
 #### Prefork ReadMe
