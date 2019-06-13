@@ -4,3 +4,4 @@ public/images/garage.*
 .env
 tmp/
 ssl/
+sbin/
