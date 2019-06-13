@@ -1,99 +1,83 @@
 require('dotenv').load();
 
 var startTakingSnaps = false;
+var echoBearerToken = 'Bearer ' + process.env.laravel_echo_token;
+var state = 'closed';
 
 var fs = require('fs');
 var path = require('path');
 var https = require('https');
 var os = require('os');
-var csurf = require('csurf');
 var logger = require('morgan');
 var bodyParser = require('body-parser');
-var cookieParser = require('cookie-parser');
 var GPIO = require('onoff').Gpio;
 var express = require('express');
 var app = express();
-var rateLimit = require('express-rate-limit');
 
 var httpsOptions = {
   key: fs.readFileSync(process.env.ssl_key),
   cert: fs.readFileSync(process.env.ssl_cert)
 };
 
+var cookieOptions = {
+  maxAge: 86400 * 1000,
+  httpOnly: true,
+  sameSite: true,
+  secure: true,
+  signed: true,
+  path: '/'
+};
+
 var server = require('https').createServer(httpsOptions, app);
 var io = require('socket.io')(server);
 
-var csrfProtection = csurf({ cookie: true });
-var parseForm = bodyParser.urlencoded({ extended: false });
+var ioClient = require('socket.io-client')(process.env.laravel_echo_endpoint);
+var ioClientAuth = {
+  auth: {
+    headers: { 'Authorization': echoBearerToken }
+  }
+};
 
-// https://www.npmjs.com/package/express-rate-limit
-// notes: allowing only 1 request to the trusonafying API
-// every minute. Why? It's the internet- there are idiots out there!
-//
-var apiLimiter = new rateLimit({
-  windowMs: 1*60*1000,
-  delayMs: 30*1000,
-  delayAfter: 1,
-  headers: true,
-  max: 1
+ioClient.emit('subscribe', { channel: 'garage', ioClientAuth
+  }).on('toggle', function(channel, data) {
+    trusonafication();
 });
 
 require('console-stamp')(console, '[HH:MM:ss]');
+
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.engine('html', require('ejs').renderFile);
 
-app.use(cookieParser());
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', csrfProtection, function(req, res) {
+app.get('/', function(req, res) {
   res.setHeader('X-Frame-Options', 'ALLOW-FROM https://' + process.env.framing_domain);
   res.setHeader('Content-Security-Policy', "frame-ancestors https://" + process.env.framing_domain);
-
-  res.render('index.html', { csrfToken: req.csrfToken() });
+  res.render('index.html');
 });
 
-var state = 'closed';
-app.get('/api/clickbutton', apiLimiter, function (req, res) {
-  state = state === 'closed' ? 'open' : 'closed';
-
-  const { spawn } = require('child_process');
-  const trusonafy = spawn(process.env.trusona, [ process.env.trusona_user ]);
-
-  trusonafy.stdout.on('data', (data) => {
-    console.log(`stdout: ${data}`);
-  });
-
-  trusonafy.stderr.on('data', (data) => {
-    console.log(`stderr: ${data}`);
-  });
-
-  trusonafy.on('close', (code) => {
-    if(code === 0) {
-      // hardcode to closed for now until reed switch
-      state = 'closed';
-
-      res.setHeader('X-Frame-Options', 'ALLOW-FROM https://' + process.env.framing_domain);
-      res.setHeader('Content-Security-Policy', "frame-ancestors https://" + process.env.framing_domain);
-      res.setHeader('Content-Type', 'application/json');
-      res.end(state);
-      outputSequence(7, '10', 1500);
-    }
-  });
+app.get('/api/clickbutton', function (req, res) {
+  trusonafication();
 });
 
-app.get('/api/status', apiLimiter, function (req, res) {
+app.get('/api/status', function (req, res) {
   res.setHeader('X-Frame-Options', 'ALLOW-FROM https://' + process.env.framing_domain);
   res.setHeader('Content-Security-Policy', "frame-ancestors https://" + process.env.framing_domain);
   res.setHeader('Content-Type', 'application/json');
 
   res.end(JSON.stringify({state: state}));
-  console.log('returning state: ' + state);
+  console.log('returning state: ', state);
 });
+
+
+function garageSuccess() {
+  outputSequence(7, '10', 1500);
+}
 
 function outputSequence(pin, seq, timeout) {
     var gpio = new GPIO(4, 'out');
@@ -123,6 +107,26 @@ app.use(function (req, res, next) {
     next(err);
 });
 
+
+function trusonafication() {
+  const { spawn } = require('child_process');
+  const trusonafy = spawn(process.env.trusona, [ "--user", process.env.trusona_user ]);
+
+  trusonafy.stdout.on('data', (data) => {
+    console.log(`stdout: ${data}`);
+  });
+
+  trusonafy.stderr.on('data', (data) => {
+    console.log(`stderr: ${data}`);
+  });
+
+  trusonafy.on('close', (code) => {
+    if(code === 0) {
+      garageSuccess();
+    }
+  });
+}
+
 function takeSnaps() {
     return setTimeout(function () {
         var imgPath = path.join(__dirname, 'public/images/') + 'garage.png';
@@ -144,12 +148,13 @@ function takeSnaps() {
 }
 
 io.on('connection', function (socket) {
-    console.log('a user connected');
+    var ip = socket.handshake.address;
+    console.log('a user connected from ', ip);
     startTakingSnaps = true;
     takeSnaps();
 
     socket.on('disconnect', function () {
-        console.log('user disconnected');
+        console.log('user disconnected at ', ip);
         startTakingSnaps = false;
     });
 });
