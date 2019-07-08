@@ -4,11 +4,11 @@ This fork injects [Trusona](https://trusona.com) into the authorization flow by 
 
 Besides that modification and some rudimentary node updates, the rest of the steps followed to setup and modify the [raspeberry pi](https://www.raspberrypi.org) are detailed [here](https://coderwall.com/p/jsd5mw/raspberry-pi-garage-door-opener-with-garagepi).
 
-The pi, relay and camera are all in a shoebox. ~~For the live feed view, head on to g.nmcode.net.~~
-
-After changing internet providers, the live feed is no longer available.
+The pi, relay and camera are all in a shoebox.
 
 ![raspeberry pi in a shoebox](public/images/shoebox-pi.png)
+
+For the live feed view, head on to [g.nmcode.net](https://g.nmcode.net)
 
 ------
 
