@@ -71,31 +71,31 @@ function garageSuccess() {
 }
 
 function outputSequence(pin, seq, timeout) {
-    var gpio = new GPIO(4, 'out');
-    gpioWrite(gpio, pin, seq, timeout);
+  var gpio = new GPIO(4, 'out');
+  gpioWrite(gpio, pin, seq, timeout);
 }
 
 function gpioWrite(gpio, pin, seq, timeout) {
-    if (!seq || seq.length <= 0) {
-        console.log('closing pin:', pin);
-        gpio.unexport();
-        return;
-    }
+  if (!seq || seq.length <= 0) {
+    console.log('closing pin:', pin);
+    gpio.unexport();
+    return;
+  }
 
-    var value = seq.substr(0, 1);
-    seq = seq.substr(1);
-    setTimeout(function () {
-        console.log('gpioWrite, value:', value, ' seq:', seq);
-        gpio.writeSync(value);
-        gpioWrite(gpio, pin, seq, timeout);
-    }, timeout);
+  var value = seq.substr(0, 1);
+  seq = seq.substr(1);
+  setTimeout(function () {
+    console.log('gpioWrite, value:', value, ' seq:', seq);
+    gpio.writeSync(value);
+    gpioWrite(gpio, pin, seq, timeout);
+  }, timeout);
 }
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
-    var err = new Error('Not Found');
-    err.status = 404;
-    next(err);
+  var err = new Error('Not Found');
+  err.status = 404;
+  next(err);
 });
 
 
@@ -118,38 +118,55 @@ function trusonafication() {
   });
 }
 
-function takeSnaps() {
-    return setTimeout(function () {
-        var imgPath = path.join(__dirname, 'public/images/') + 'garage.png';
-        var cmd = 'raspistill -vf -hf -w 640 -h 480 -ex auto -q 100 -e png -o ' + imgPath;
-        var exec = require('child_process').exec;
+function uploadSnap(file) {
+  var cmd = process.env.upload_command;
+  var exec = require('child_process').exec;
 
-        exec(cmd, function (error, stdout, stderr) {
-            if (error !== null) {
-                console.log('exec error: ' + error);
-                return;
-            }
-            io.emit('snapshot', 'ready');
-            console.log('snapshot created...');
-            if (startTakingSnaps) {
-                takeSnaps();
-            }
-        });
-    }, 0);
+  exec(cmd, function (error, stdout, stderr) {
+    if (!error) {
+      console.log('upload success: ', file);
+    }
+    else {
+      console.log('exec error: ', error);
+    }
+  });
+}
+
+function takeSnaps() {
+  return setTimeout(function () {
+  var imgPath = path.join(__dirname, 'public/images/', 'garage.png');
+  var cmd = 'raspistill -vf -hf -w 640 -h 480 -ex auto -q 100 -e png -o ' + imgPath;
+  var exec = require('child_process').exec;
+
+    exec(cmd, function (error, stdout, stderr) {
+      if(!error) {
+        uploadSnap(imgPath);
+      }
+      else {
+        console.log('exec error: ' + error);
+        return;
+      }
+      io.emit('snapshot', 'ready');
+      console.log('snapshot created...');
+      if (startTakingSnaps) {
+        takeSnaps();
+      }
+    });
+  }, 0);
 }
 
 io.on('connection', function (socket) {
-    var ip = socket.handshake.address;
-    console.log('a user connected from ', ip);
-    startTakingSnaps = true;
-    takeSnaps();
+  var ip = socket.handshake.address;
+  console.log('a user connected from ', ip);
+  startTakingSnaps = true;
+  takeSnaps();
 
-    socket.on('disconnect', function () {
-        console.log('user disconnected at ', ip);
-        startTakingSnaps = false;
-    });
+  socket.on('disconnect', function () {
+    console.log('user disconnected at ', ip);
+    startTakingSnaps = false;
+  });
 });
 
 server.listen(process.env.run_on_port, function () {
-    console.log('GaragePi listening on port:', process.env.run_on_port);
+  console.log('GaragePi listening on port:', process.env.run_on_port);
 });
