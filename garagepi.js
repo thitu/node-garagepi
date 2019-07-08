@@ -19,15 +19,6 @@ var httpsOptions = {
   cert: fs.readFileSync(process.env.ssl_cert)
 };
 
-var cookieOptions = {
-  maxAge: 86400 * 1000,
-  httpOnly: true,
-  sameSite: true,
-  secure: true,
-  signed: true,
-  path: '/'
-};
-
 var server = require('https').createServer(httpsOptions, app);
 var io = require('socket.io')(server);
 
