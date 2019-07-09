@@ -147,7 +147,9 @@ function takeSnaps() {
   exec(cmd,
     function (error, stdout, stderr) {
       if(!error) {
-        uploadSnap(imgPath);
+        if(startTakingSnaps) {
+          uploadSnap(imgPath);
+        }
       }
       else {
         console.log('exec error: ', error);
