@@ -3,6 +3,7 @@ require('dotenv').load();
 var startTakingSnaps = false;
 var echoBearerToken = 'Bearer ' + process.env.laravel_echo_token;
 var state = 'closed';
+var active = false;
 
 var fs = require('fs');
 var path = require('path');
@@ -47,8 +48,6 @@ app.use(bodyParser.urlencoded({extended: false}));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', function(req, res) {
-  res.setHeader('X-Frame-Options', 'ALLOW-FROM https://' + process.env.framing_domain);
-  res.setHeader('Content-Security-Policy', "frame-ancestors https://" + process.env.framing_domain);
   res.render('index.html');
 });
 
@@ -57,8 +56,6 @@ app.get('/api/clickbutton', function (req, res) {
 });
 
 app.get('/api/status', function (req, res) {
-  res.setHeader('X-Frame-Options', 'ALLOW-FROM https://' + process.env.framing_domain);
-  res.setHeader('Content-Security-Policy', "frame-ancestors https://" + process.env.framing_domain);
   res.setHeader('Content-Type', 'application/json');
 
   res.end(JSON.stringify({state: state}));
@@ -100,6 +97,13 @@ app.use(function (req, res, next) {
 
 
 function trusonafication() {
+  if(active) {
+    console.log('currently busy; doing nothing!');
+    return;
+  }
+
+  active = true;
+
   const { spawn } = require('child_process');
   const trusonafy = spawn(process.env.trusona, [ "--user", process.env.trusona_user ]);
 
@@ -112,6 +116,8 @@ function trusonafication() {
   });
 
   trusonafy.on('close', (code) => {
+    active = false;
+
     if(code === 0) {
       garageSuccess();
     }
@@ -138,17 +144,20 @@ function takeSnaps() {
   var cmd = 'raspistill -vf -hf -w 640 -h 480 -ex auto -q 100 -e png -o ' + imgPath;
   var exec = require('child_process').exec;
 
-    exec(cmd, function (error, stdout, stderr) {
+  exec(cmd,
+    function (error, stdout, stderr) {
       if(!error) {
         uploadSnap(imgPath);
       }
       else {
-        console.log('exec error: ' + error);
+        console.log('exec error: ', error);
         return;
       }
+
       io.emit('snapshot', 'ready');
       console.log('snapshot created...');
-      if (startTakingSnaps) {
+
+      if(startTakingSnaps) {
         takeSnaps();
       }
     });
