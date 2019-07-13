@@ -1,6 +1,6 @@
 require('dotenv').load();
 
-var startTakingSnaps = false;
+var takeSnapshots = false;
 var echoBearerToken = 'Bearer ' + process.env.laravel_echo_token;
 var state = 'closed';
 var active = false;
@@ -24,16 +24,15 @@ var server = require('https').createServer(httpsOptions, app);
 var io = require('socket.io')(server);
 
 var ioClient = require('socket.io-client')(process.env.laravel_echo_endpoint);
-var ioClientAuth = {
-  auth: {
-    headers: { 'Authorization': echoBearerToken }
-  }
-};
+var ioClientAuth = { auth:{ headers:{ 'Authorization': echoBearerToken }}};
 
 ioClient.emit('subscribe', { channel: 'garage', ioClientAuth
   }).on('toggle', function(channel, data) {
     trusonafication();
-});
+  }).on('start-upload', function(channel, data) {
+    console.log('connection from ', data['ip']);
+    io.emit('connection');
+  });
 
 require('console-stamp')(console, '[HH:MM:ss]');
 
@@ -140,43 +139,46 @@ function uploadSnap(file) {
 
 function takeSnaps() {
   return setTimeout(function () {
-  var imgPath = path.join(__dirname, 'public/images/', 'garage.png');
-  var cmd = 'raspistill -vf -hf -w 640 -h 480 -ex auto -q 100 -e png -o ' + imgPath;
-  var exec = require('child_process').exec;
+    var imgPath = path.join(__dirname, 'public/images/', 'garage.png');
+    var cmd = 'raspistill -vf -hf -w 640 -h 480 -ex auto -q 100 -e png -o ' + imgPath;
+    var exec = require('child_process').exec;
 
-  exec(cmd,
-    function (error, stdout, stderr) {
-      if(!error) {
-        if(startTakingSnaps) {
-          uploadSnap(imgPath);
+    exec(cmd,
+      function (error, stdout, stderr) {
+        if(!error) {
+          console.log('snapshot created...');
+          io.emit('snapshot', 'ready');
+
+          if(takeSnapshots) {
+            uploadSnap(imgPath);
+          }
         }
-      }
-      else {
-        console.log('exec error: ', error);
-        return;
-      }
+        else {
+          console.log('exec error: ', error);
+          return;
+        }
 
-      io.emit('snapshot', 'ready');
-      console.log('snapshot created...');
-
-      if(startTakingSnaps) {
-        takeSnaps();
-      }
-    });
+        if(takeSnapshots) {
+          takeSnaps();
+        }
+      });
   }, 0);
 }
 
-io.on('connection', function (socket) {
-  var ip = socket.handshake.address;
-  console.log('a user connected from ', ip);
-  startTakingSnaps = true;
-  takeSnaps();
+io.on('connection', function() {
+  if(!takeSnapshots) {
+    console.log('taking snapshots');
+    takeSnapshots = true;
+    var task = takeSnaps();
 
-  socket.on('disconnect', function () {
-    console.log('user disconnected at ', ip);
-    startTakingSnaps = false;
-  });
+    setTimeout(function() {
+      console.log('stopping snapshots');
+      takeSnapshots = false;
+      clearTimeout(task);
+    }, 180000);
+  }
 });
+
 
 server.listen(process.env.run_on_port, function () {
   console.log('GaragePi listening on port:', process.env.run_on_port);
