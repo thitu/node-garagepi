@@ -1,9 +1,8 @@
 require('dotenv').load();
 
-var takeSnapshots = false;
-var echoBearerToken = 'Bearer ' + process.env.laravel_echo_token;
 var state = 'closed';
 var active = false;
+var activePhoto = false;
 
 var fs = require('fs');
 var path = require('path');
@@ -23,19 +22,7 @@ var httpsOptions = {
 var server = require('https').createServer(httpsOptions, app);
 var io = require('socket.io')(server);
 
-var ioClient = require('socket.io-client')(process.env.laravel_echo_endpoint);
-var ioClientAuth = { auth:{ headers:{ 'Authorization': echoBearerToken }}};
-
-ioClient.emit('subscribe', { channel: 'garage', ioClientAuth
-  }).on('toggle', function(channel, data) {
-    trusonafication();
-  }).on('start-upload', function(channel, data) {
-    console.log('connection from ', data['ip']);
-    io.emit('connection');
-  });
-
 require('console-stamp')(console, '[HH:MM:ss]');
-
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -108,10 +95,12 @@ function trusonafication() {
 
   trusonafy.stdout.on('data', (data) => {
     console.log(`stdout: ${data}`);
+    active = false;
   });
 
   trusonafy.stderr.on('data', (data) => {
     console.log(`stderr: ${data}`);
+    active = false;
   });
 
   trusonafy.on('close', (code) => {
@@ -123,62 +112,41 @@ function trusonafication() {
   });
 }
 
-function uploadSnap(file) {
-  var cmd = process.env.upload_command;
-  var exec = require('child_process').exec;
-
-  exec(cmd, function (error, stdout, stderr) {
-    if (!error) {
-      console.log('upload success: ', file);
+function takePhotos() {
+  return setTimeout(function () {
+    if(activePhoto) {
+      return;
     }
     else {
-      console.log('exec error: ', error);
+      activePhoto = true;
     }
-  });
-}
 
-function takeSnaps() {
-  return setTimeout(function () {
     var imgPath = path.join(__dirname, 'public/images/', 'garage.png');
     var cmd = 'raspistill -vf -hf -w 640 -h 480 -ex auto -q 100 -e png -o ' + imgPath;
     var exec = require('child_process').exec;
 
     exec(cmd,
       function (error, stdout, stderr) {
-        if(!error) {
-          console.log('snapshot created...');
-          io.emit('snapshot', 'ready');
+        activePhoto = false;
 
-          if(takeSnapshots) {
-            uploadSnap(imgPath);
-          }
+        if(!error) {
+          console.log('image created...');
+          io.emit('snapshot', 'ready');
         }
         else {
           console.log('exec error: ', error);
           return;
         }
 
-        if(takeSnapshots) {
-          takeSnaps();
-        }
+        takePhotos();
       });
   }, 0);
 }
 
 io.on('connection', function() {
-  if(!takeSnapshots) {
-    console.log('taking snapshots');
-    takeSnapshots = true;
-    var task = takeSnaps();
-
-    setTimeout(function() {
-      console.log('stopping snapshots');
-      takeSnapshots = false;
-      clearTimeout(task);
-    }, 180000);
-  }
+  console.log('taking photos');
+  takePhotos();
 });
-
 
 server.listen(process.env.run_on_port, function () {
   console.log('GaragePi listening on port:', process.env.run_on_port);
