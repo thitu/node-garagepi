@@ -140,7 +140,7 @@ function takePhotos() {
 
         takePhotos();
       });
-  }, 0);
+  }, 500);
 }
 
 io.on('connection', function() {
