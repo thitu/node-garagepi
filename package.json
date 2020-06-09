@@ -14,7 +14,7 @@
     "epoll": "^2.0.1",
     "express": "^4.17.1",
     "fs": "0.0.1-security",
-    "morgan": "^1.9.1",
+    "morgan": "^1.10.0",
     "node-autostart": "^3.0.3",
     "node-gyp": "^4.0.0",
     "onoff": "^3.0.2",
