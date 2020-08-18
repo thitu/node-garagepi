@@ -10,7 +10,7 @@
     "console-stamp": "^0.2.9",
     "debug": "^4.1.1",
     "dotenv": "^5.0.1",
-    "ejs": "^2.6.1",
+    "ejs": "^3.1.5",
     "epoll": "^2.0.1",
     "express": "^4.17.1",
     "fs": "0.0.1-security",
