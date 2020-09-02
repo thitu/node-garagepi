@@ -8,7 +8,7 @@ The pi, relay and camera are all in a shoebox.
 
 ![raspeberry pi in a shoebox](public/images/shoebox-pi.png)
 
-For the live feed view, head on to [g.nmcode.net](https://g.nmcode.net)
+~For the live feed view, head on to [g.nmcode.net](hxxps://g.nmcode.net)~ The live feed is currently offline.
 
 ------
 
