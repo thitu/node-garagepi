@@ -9,7 +9,7 @@
     "body-parser": "^1.19.0",
     "console-stamp": "^0.2.9",
     "debug": "^4.1.1",
-    "dotenv": "^5.0.1",
+    "dotenv": "^8.5.1",
     "ejs": "^2.6.1",
     "epoll": "^2.0.1",
     "express": "^4.17.1",
